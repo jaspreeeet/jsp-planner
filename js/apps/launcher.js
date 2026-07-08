@@ -1,6 +1,14 @@
 /* ═══════════ PORTALS — jump straight into your other worlds ═══════════ */
 import { S, save, esc, el, uid, toast } from '../core.js';
-import { modal, confirmModal } from '../wm.js';
+import { modal, confirmModal, openApp } from '../wm.js';
+
+/* these play inside the app now — route to the Media window */
+function mediaTabFor(url) {
+  if (/music:\/\/|music\.apple\.com/.test(url)) return 'am';
+  if (/youtube\.com|youtu\.be/.test(url)) return 'yt';
+  if (/spotify/.test(url)) return 'sp';
+  return null;
+}
 
 const DEFAULTS = [
   { name: 'Apple Music', emoji: '🎵', url: 'music://' },
@@ -55,11 +63,18 @@ export default {
 
     const grid = el(`<div class="tile-grid"></div>`);
     for (const l of S.links) {
+      const mt = mediaTabFor(l.url);
       const t = el(`
         <a class="tile" href="${esc(l.url)}" target="${l.url.startsWith('http') ? '_blank' : '_self'}" rel="noopener">
           <span class="t-e">${l.emoji}</span><div class="t-n">${esc(l.name)}</div>
+          ${mt ? '<span class="tag" style="position:absolute;bottom:4px;right:6px;font-size:7px">in-app</span>' : ''}
           <button class="r-x">×</button>
         </a>`);
+      if (mt) t.addEventListener('click', e => {
+        if (e.target.classList.contains('r-x')) return;
+        e.preventDefault();
+        openApp('media', { tab: mt });
+      });
       t.querySelector('.r-x').addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
         confirmModal('remove portal?', `<b>${esc(l.name)}</b>`, () => {

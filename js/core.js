@@ -70,6 +70,7 @@ export const DEFAULT_STATE = {
   shortcuts: [],              // {id,name,emoji,input}
   links: [],                  // {id,name,emoji,url}
   mixtape: { channel: 0, vol: 0.9 },
+  media: { items: [], tab: 'yt', seeded: false },
   stats: { captures: 0, medsTaken: 0, tasksDone: 0, journalEntries: 0, gamesPlayed: 0, breaths: 0, pomos: 0 },
 };
 

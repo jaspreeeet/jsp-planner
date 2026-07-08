@@ -16,10 +16,11 @@ import games from './apps/games.js';
 import shortcuts from './apps/shortcuts.js';
 import launcher from './apps/launcher.js';
 import mixtape from './apps/mixtape.js';
+import media from './apps/media.js';
 import stats from './apps/stats.js';
 import sync from './apps/sync.js';
 
-const ALL = [today, planner, meds, routines, journal, trackers, unstuck, selfcare, collections, photos, mixtape, games, shortcuts, launcher, stats, sync];
+const ALL = [today, planner, meds, routines, journal, trackers, unstuck, selfcare, collections, photos, mixtape, media, games, shortcuts, launcher, stats, sync];
 
 async function boot() {
   await dbOpen();
