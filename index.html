@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>JSP·OS — your second brain</title>
+<meta name="description" content="A retro desktop for your life — planner, second brain, mixtape.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JSP·OS">
+<meta name="theme-color" content="#f2ecdd">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <!-- ══════════ MENU BAR ══════════ -->
+  <header id="menubar">
+    <button class="mb-logo" id="mb-home" title="Desktop">▚ JSP·OS</button>
+    <nav id="mb-menus"></nav>
+    <div class="mb-spacer"></div>
+    <div id="mb-nowplaying" class="hidden">
+      <button id="mb-play" title="Play / pause">▶</button>
+      <span id="mb-track">mixtape</span>
+    </div>
+    <span id="mb-xp" title="Your level & XP"></span>
+    <span id="mb-clock">00:00</span>
+  </header>
+
+  <!-- ══════════ DESKTOP ══════════ -->
+  <main id="desktop">
+    <div id="desk-greeting">
+      <div class="dg-serif" id="dg-line">good evening</div>
+      <div class="dg-date" id="dg-date"></div>
+    </div>
+    <div id="icon-grid"></div>
+    <div id="window-layer"></div>
+  </main>
+
+  <!-- ══════════ DOCK (mobile & desktop) ══════════ -->
+  <footer id="dock">
+    <button class="dock-btn" data-app="today"><span class="dock-ico">☀</span><span class="dock-lbl">Today</span></button>
+    <button class="dock-btn" data-app="planner"><span class="dock-ico">▤</span><span class="dock-lbl">Plan</span></button>
+    <button class="dock-btn dock-capture" id="dock-capture"><span class="dock-ico">+</span></button>
+    <button class="dock-btn" data-app="journal"><span class="dock-ico">✎</span><span class="dock-lbl">Journal</span></button>
+    <button class="dock-btn" id="dock-apps"><span class="dock-ico">▦</span><span class="dock-lbl">Apps</span></button>
+  </footer>
+
+  <!-- ══════════ OVERLAYS ══════════ -->
+  <div id="capture-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <div class="sheet-title">⚡ Brain dump</div>
+      <textarea id="capture-input" placeholder="get it out of your head…" rows="3"></textarea>
+      <div class="capture-row" id="capture-tags"></div>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="capture-cancel">nah</button>
+        <button class="btn primary" id="capture-save">captured ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-zone"></div>
+  <canvas id="confetti"></canvas>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
