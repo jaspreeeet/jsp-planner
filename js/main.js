@@ -19,15 +19,74 @@ import mixtape from './apps/mixtape.js';
 import media from './apps/media.js';
 import stats from './apps/stats.js';
 import sync from './apps/sync.js';
+import events from './apps/events.js';
+import goals from './apps/goals.js';
+import money from './apps/money.js';
+import people from './apps/people.js';
+import weather from './apps/weather.js';
+import doodle from './apps/doodle.js';
+import calc from './apps/calc.js';
 
-const ALL = [today, planner, meds, routines, journal, trackers, unstuck, selfcare, collections, photos, mixtape, media, games, shortcuts, launcher, stats, sync];
+const ALL = [today, planner, meds, routines, journal, events, goals, trackers, unstuck, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, money, calc, shortcuts, launcher, stats, sync];
+
+/* seed friendly examples — only into EMPTY sections, all clearly marked, all deletable */
+function seedExamples() {
+  if (S.settings.exampled) return;
+  S.settings.exampled = true;
+  const dk = todayKey();
+  const ago = n => { const d = new Date(); d.setDate(d.getDate() - n); return todayKey(d); };
+  const inDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return todayKey(d); };
+
+  if (!S.meds.length) S.meds.push({
+    id: uid(), name: 'Vitamin D3 (example)', dose: '1 capsule · 1000 IU', kind: 'med',
+    why: 'sunshine in pill form — mood, energy and bones all thank me', times: ['09:00'], color: '#ffb347', taken: {},
+  });
+  if (!S.trackers.length) {
+    const wlog = {}, mlog = {};
+    for (let i = 1; i <= 7; i++) { wlog[ago(i)] = 3 + (i % 5); mlog[ago(i)] = 2 + (i % 4); }
+    S.trackers.push(
+      { id: uid(), name: 'Water (example)', emoji: '💧', type: 'counter', unit: 'glasses', goal: 8, log: wlog },
+      { id: uid(), name: 'Mood (example)', emoji: '🌈', type: 'rating', unit: '', goal: null, log: mlog },
+    );
+  }
+  if (!S.collections.length) S.collections.push({
+    id: uid(), name: 'Jokes', emoji: '😂', items: [
+      { id: uid(), text: 'I told my suitcase there\'d be no vacation this year. now I\'m dealing with emotional baggage. (example — add your own!)', ts: Date.now(), fav: true },
+      { id: uid(), text: 'Parallel lines have so much in common. shame they\'ll never meet. (example)', ts: Date.now(), fav: false },
+    ],
+  });
+  if (!S.journal.length) S.journal.push(
+    { id: uid(), sig: 'note', text: 'this is a bullet journal note (example) — the ✎ pencil symbols on the left change the entry type', dateKey: dk, done: false, ts: Date.now() },
+    { id: uid(), sig: 'grateful', text: 'grateful for a second brain that remembers so I don\'t have to (example)', dateKey: dk, done: false, ts: Date.now() },
+  );
+  if (!S.events.length) S.events.push({ id: uid(), name: 'something to look forward to (example)', emoji: '🎡', date: inDays(12) });
+  if (!S.goals.length) S.goals.push({
+    id: uid(), name: 'learn JSP·OS (example)', emoji: '🗺', why: 'a tool only helps if it\'s in my hands',
+    milestones: [
+      { id: uid(), text: 'brain-dump one thought with the big + button', done: false },
+      { id: uid(), text: 'add my real meds with their WHY', done: false },
+      { id: uid(), text: 'play one mixtape channel', done: false },
+      { id: uid(), text: 'pick my favourite colour theme in Sync', done: false },
+    ],
+  });
+  if (!S.people.length) S.people.push({
+    id: uid(), name: 'Sample Friend (example)', emoji: '🦊', likes: 'coffee, indie films, being remembered',
+    birthday: '', notes: 'this is where inside jokes and “ask them about…” notes live', lastTalked: ago(25),
+  });
+  if (!S.money.entries.length) S.money.entries.push(
+    { id: uid(), amount: 120, cat: 'food', emoji: '🍕', note: 'pizza night (example)', dateKey: ago(1) },
+    { id: uid(), amount: 60, cat: 'coffee', emoji: '☕', note: 'oat latte (example)', dateKey: dk },
+  );
+  save();
+}
 
 async function boot() {
   await dbOpen();
   await loadState();
+  seedExamples();
   ALL.forEach(registerApp);
 
-  document.body.classList.toggle('night', !!S.settings.night);
+  document.body.dataset.theme = S.settings.theme || (S.settings.night ? 'night' : 'cream');
   renderDesktop();
   renderMenubar();
   renderGreeting();

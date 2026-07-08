@@ -102,20 +102,29 @@ export default {
       <div class="card">
         <label class="fld" style="margin-top:0">what should I call you?</label>
         <input type="text" id="st-name" value="${esc(S.settings.greetName || '')}" placeholder="your name / nickname">
-        <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
-          <button class="pcheck ${S.settings.night ? 'on' : ''}" id="st-night"></button>
-          <span style="font-size:14px">🌙 night mode</span>
-        </div>
+        <label class="fld">colour theme</label>
+        <div class="chip-row" id="st-themes"></div>
       </div>`);
     pers.querySelector('#st-name').addEventListener('change', e => {
       S.settings.greetName = e.target.value.trim(); save(); toast('noted 💛');
     });
-    pers.querySelector('#st-night').addEventListener('click', function () {
-      S.settings.night = !S.settings.night;
-      this.classList.toggle('on', S.settings.night);
-      document.body.classList.toggle('night', S.settings.night);
-      save();
-    });
+    const THEMES = [
+      ['cream', '🏖 poolside'], ['night', '🌙 night'], ['miami', '🌴 miami'],
+      ['matcha', '🍵 matcha'], ['ocean', '🌊 ocean'], ['blush', '🌸 blush'], ['terminal', '👾 terminal'],
+    ];
+    const themeZone = pers.querySelector('#st-themes');
+    const curTheme = S.settings.theme || 'cream';
+    for (const [id, lbl] of THEMES) {
+      const c = el(`<button class="chip ${curTheme === id ? 'on' : ''}">${lbl}</button>`);
+      c.addEventListener('click', () => {
+        S.settings.theme = id;
+        document.body.dataset.theme = id;
+        themeZone.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+        c.classList.add('on');
+        save(); toast(lbl + ' — looking good');
+      });
+      themeZone.appendChild(c);
+    }
     body.appendChild(pers);
 
     /* --- iCloud sync via Shortcuts --- */
@@ -143,21 +152,24 @@ export default {
     cloud.querySelector('#cl-setup').addEventListener('click', () => modal({
       title: '☁️ one-time setup (per device)',
       bodyHTML: `
-        <p class="muted" style="line-height:1.6">in the <b>Shortcuts app</b>, create two shortcuts:</p>
+        <p class="muted" style="line-height:1.6">I made the shortcuts for you — just install them (they're signed & safe, built by this app):</p>
+        <div class="two-col" style="margin:12px 0">
+          <a class="btn wide" style="text-align:center;text-decoration:none;display:block" href="shortcuts/planner-backup.shortcut" download>⬇ get<br>Planner Backup</a>
+          <a class="btn wide" style="text-align:center;text-decoration:none;display:block" href="shortcuts/planner-restore.shortcut" download>⬇ get<br>Planner Restore</a>
+        </div>
+        <p class="muted" style="line-height:1.7">
+        <b>on iPhone/iPad:</b> tap a button → open the downloaded file (tap it in Safari's ⬇ downloads, or in the Files app) → <b>Add Shortcut</b>. repeat for the second one.<br>
+        <b>on Mac:</b> click both, double-click the files in Downloads → <b>Add Shortcut</b>.</p>
+        <p class="muted" style="line-height:1.6">⚠️ keep the names exactly <b>Planner Backup</b> and <b>Planner Restore</b>. after installing on each device: <b>backup</b> here on one device → <b>restore</b> on another. iCloud carries it automatically. photos travel only via the backup <i>file</i> below (too big for the clipboard).</p>
+        <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">prefer to build them by hand?</summary>
         <div class="card flat" style="margin-top:10px">
-          <div class="card-title">1 · name it exactly: Planner Backup</div>
-          <p class="muted" style="line-height:1.7">
-          ① <b>Get Clipboard</b><br>
-          ② <b>Save File</b> → iCloud Drive → folder <code>Planner</code> → name <code>planner-backup.json</code> → turn <b>Overwrite</b> ON</p>
+          <div class="card-title">Planner Backup</div>
+          <p class="muted" style="line-height:1.7">① <b>Get Clipboard</b> ② <b>Save File</b> → iCloud Drive → <code>Planner/planner-backup.json</code> → Overwrite ON</p>
         </div>
         <div class="card flat">
-          <div class="card-title">2 · name it exactly: Planner Restore</div>
-          <p class="muted" style="line-height:1.7">
-          ① <b>Get File</b> → iCloud Drive → <code>Planner/planner-backup.json</code><br>
-          ② <b>Copy to Clipboard</b><br>
-          ③ <b>Open URLs</b> → <code>${location.origin}${location.pathname}#paste</code></p>
-        </div>
-        <p class="muted">then: tap <b>backup</b> on one device, <b>restore</b> on another. iCloud carries it between them automatically. photos ride along only in the backup <i>file</i> below (they're too big for the clipboard).</p>`,
+          <div class="card-title">Planner Restore</div>
+          <p class="muted" style="line-height:1.7">① <b>Get File</b> → <code>Planner/planner-backup.json</code> ② <b>Get Text from Input</b> ③ <b>Copy to Clipboard</b> ④ <b>Open URL</b> → <code>${location.origin}${location.pathname}#paste</code></p>
+        </div></details>`,
     }));
     body.appendChild(cloud);
 

@@ -1,6 +1,7 @@
 /* ═══════════ TODAY — everything due, one calm place ═══════════ */
 import { S, save, todayKey, fmtTime, esc, el, addXP, toast, emit } from '../core.js';
 import { openApp } from '../wm.js';
+import { nextEvent, daysUntil } from './events.js';
 
 function medsDue() {
   const tk = todayKey();
@@ -56,6 +57,20 @@ export default {
         <div class="tstat"><div class="ts-n">${tasks.length}</div><div class="ts-l">tasks left</div></div>
         <div class="tstat"><div class="ts-n">${doneToday}</div><div class="ts-l">done ✓</div></div>
       </div>`));
+
+    // nearest countdown — time, made visible
+    const ne = nextEvent();
+    if (ne) {
+      const d = daysUntil(ne.date);
+      const evRow = el(`
+        <div class="card flat" style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--paper-2)">
+          <span style="font-size:20px">${ne.emoji}</span>
+          <div class="r-main"><div class="r-title" style="font-size:13px">${esc(ne.name)}</div></div>
+          <span class="pixel-sub" style="color:${d <= 3 ? 'var(--red)' : 'var(--accent)'}">${d === 0 ? 'TODAY' : d + (d === 1 ? ' day' : ' days')}</span>
+        </div>`);
+      evRow.addEventListener('click', () => openApp('events'));
+      body.appendChild(evRow);
+    }
 
     // meds due
     if (due.length) {

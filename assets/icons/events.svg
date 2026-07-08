@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+<stop offset='0' stop-color='#e05252'/><stop offset='1' stop-color='#e05252' stop-opacity='.75'/>
+</linearGradient></defs>
+<rect x='2' y='2' width='60' height='60' rx='14' fill='url(#g)' stroke='#211d19' stroke-width='3'/>
+<rect x='7' y='6' width='50' height='12' rx='6' fill='#ffffff' opacity='.28'/>
+<text x='32' y='40' font-size='30' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system, sans-serif'>⏳</text>
+</svg>

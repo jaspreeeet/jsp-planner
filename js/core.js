@@ -71,6 +71,10 @@ export const DEFAULT_STATE = {
   links: [],                  // {id,name,emoji,url}
   mixtape: { channel: 0, vol: 0.9 },
   media: { items: [], tab: 'yt', seeded: false },
+  events: [],                 // {id,name,emoji,date}
+  goals: [],                  // {id,name,emoji,why,milestones[{id,text,done}]}
+  money: { entries: [], budget: null },
+  people: [],                 // {id,name,emoji,likes,birthday,notes,lastTalked}
   stats: { captures: 0, medsTaken: 0, tasksDone: 0, journalEntries: 0, gamesPlayed: 0, breaths: 0, pomos: 0 },
 };
 
@@ -86,6 +90,7 @@ export async function loadState() {
   S = Object.assign({}, structuredClone(DEFAULT_STATE), raw || {});
   S.stats = Object.assign({}, DEFAULT_STATE.stats, S.stats || {});
   S.settings = Object.assign({}, DEFAULT_STATE.settings, S.settings || {});
+  S.money = Object.assign({ entries: [], budget: null }, S.money || {});
   if (!S.profile.joined) S.profile.joined = Date.now();
   // reset daily xp
   if (S.xp.todayKey !== todayKey()) { S.xp.todayKey = todayKey(); S.xp.today = 0; }
