@@ -69,7 +69,7 @@ export async function connect(token) {
     if (!create.ok) throw new Error('Could not initialize Gist storage.');
     gistId = (await create.json()).id;
   }
-
+  S.settings = S.settings || {};
   S.settings.gh = { token, gistId, user, lastPush: 0, lastPull: 0 };
   save();
   return user;
