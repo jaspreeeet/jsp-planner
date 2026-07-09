@@ -36,6 +36,21 @@ import habits from './apps/habits.js';
 
 const ALL = [today, planner, calendar, habits, meds, routines, journal, events, goals, trackers, unstuck, oracle, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, clock, money, calc, shortcuts, launcher, stats, sync];
 
+import { handleAuthCallback } from './cloud.js';
+
+const urlParams = new URLSearchParams(window.location.search);
+const authCode = urlParams.get('code');
+
+if (authCode) {
+  // 1. Clean the URL so the weird code disappears
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  // 2. Do the background login
+  handleAuthCallback(authCode)
+    .then(user => console.log(`Logged in as ${user}`))
+    .catch(err => alert(`Sync failed: ${err.message}`));
+}
+
 /* seed friendly examples — only into EMPTY sections, all clearly marked, all deletable */
 function seedExamples() {
   // v4 additions run their own pass so existing users get them too

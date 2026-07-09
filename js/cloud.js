@@ -1,11 +1,14 @@
-/* ═══════════ CLOUD SYNC — private GitHub Gist as your personal server ═══════════
-   Connect once per device with a GitHub token (gist scope only).
-   Auto-push after changes, auto-pull on launch. Last writer wins. */
-import { S, save, saveNow, kvSet, toast, on, emit } from './core.js';
+/* ═══════════ CLOUD SYNC — Secure GitHub OAuth Serverless Sync ═══════════
+   No PATs stored. Uses OAuth App + Serverless Proxy. */
+import { S, save, saveNow } from './core.js';
 
 const GIST_DESC = 'JSP·OS planner sync — private';
 const FILE = 'jsp-os-backup.json';
 const API = 'https://api.github.com';
+
+// ⚠️ Configuration
+const CLIENT_ID = 'Ov23livqxSI0BY75sgZe';
+const BACKEND_URL = 'https://github-auth.7yshv8snnw.workers.dev';
 
 const gh = () => S.settings.gh || null;
 const headers = t => ({
@@ -16,13 +19,38 @@ const headers = t => ({
 
 export function cloudReady() { return !!(gh() && gh().token && gh().gistId); }
 
+/**
+ * 1. Call this to send the user to GitHub to sign in
+ */
+export function redirectToGitHub() {
+  const root = window.location.origin + window.location.pathname;
+  window.location.href = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=gist&redirect_uri=${encodeURIComponent(root)}`;
+}
+
+/**
+ * 2. Check URL for '?code=...' on app load, pass it here to complete login
+ */
+export async function handleAuthCallback(code) {
+  // Exchange code for token via proxy backend
+  const res = await fetch(BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+
+  if (!res.ok) throw new Error('Auth proxy failed');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error_description || data.error);
+
+  // Initialize connection with the new token
+  return await connect(data.access_token);
+}
+
 export async function connect(token) {
-  token = token.trim();
   const u = await fetch(API + '/user', { headers: headers(token) });
-  if (!u.ok) throw new Error(u.status === 401 ? 'token not accepted — check it has the gist scope' : 'github error ' + u.status);
+  if (!u.ok) throw new Error('GitHub authorization expired or invalid.');
   const user = (await u.json()).login;
 
-  // find an existing sync gist, else create one
   let gistId = null;
   const list = await fetch(API + '/gists?per_page=100', { headers: headers(token) });
   if (list.ok) {
@@ -38,9 +66,10 @@ export async function connect(token) {
         files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: 0, state: null }) } },
       }),
     });
-    if (!create.ok) throw new Error('couldn\'t create the sync gist (' + create.status + ')');
+    if (!create.ok) throw new Error('Could not initialize Gist storage.');
     gistId = (await create.json()).id;
   }
+
   S.settings.gh = { token, gistId, user, lastPush: 0, lastPull: 0 };
   save();
   return user;
@@ -58,7 +87,7 @@ export async function push() {
       files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: S._ts || Date.now(), state: JSON.parse(JSON.stringify(S)) }) } },
     });
     const r = await fetch(`${API}/gists/${gh().gistId}`, { method: 'PATCH', headers: headers(gh().token), body });
-    if (!r.ok) throw new Error('push failed (' + r.status + ')');
+    if (!r.ok) throw new Error('Push failed.');
     gh().lastPush = Date.now();
     lastPushedTs = S._ts || 0;
     save();
@@ -82,14 +111,13 @@ export async function pull() {
   return null;
 }
 
-/* boot-time: adopt remote if it's newer than local */
 export async function pullIfNewer() {
   try {
     const remote = await pull();
     if (!remote || !remote.state) return false;
     const localTs = S._ts || 0;
     if ((remote.state._ts || remote.ts || 0) > localTs) {
-      const keepKey = S.settings.gh;                      // keep this device's connection
+      const keepKey = S.settings.gh;
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, remote.state);
       S.settings = S.settings || {};
@@ -102,7 +130,6 @@ export async function pullIfNewer() {
   return false;
 }
 
-/* background engine: check every 25s, push if state changed since last push */
 let lastPushedTs = 0;
 export function startEngine() {
   if (!cloudReady()) return;

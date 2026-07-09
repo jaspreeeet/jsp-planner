@@ -1,7 +1,8 @@
 /* ═══════════ SYNC & SETTINGS — iCloud via Shortcuts · backups · reminders ═══════════ */
 import { S, save, saveNow, kvSet, esc, el, toast, todayKey, photoAll, photoPut } from '../core.js';
 import { modal } from '../wm.js';
-import { cloudReady, connect, disconnect, push, pullIfNewer } from '../cloud.js';
+// ✨ Notice the new redirectToGitHub import here!
+import { cloudReady, connect, disconnect, push, pullIfNewer, redirectToGitHub } from '../cloud.js';
 import { aiReady, ask } from '../ai.js';
 
 function stateJSON() { return JSON.stringify({ app: 'jsp-os', ts: Date.now(), state: JSON.parse(JSON.stringify(S)) }); }
@@ -173,30 +174,16 @@ export default {
       card.querySelector('[data-out]').addEventListener('click', () => { disconnect(); ctx.refresh(params); });
       body.appendChild(card);
     } else {
+      // ✨ HERE IS THE NEW UI!
+      // It completely replaces the 3 old password inputs with 1 button.
       const card = el(`
         <div class="card">
-          <p class="muted" style="margin-bottom:10px">the closest thing to a login: connect your GitHub account once per device and your whole planner syncs itself through a <b>private</b> gist — no shortcuts, no buttons, works anywhere.</p>
-          <button class="btn wide" data-tok-guide>1 · get my token (opens github, pre-configured)</button>
-          <label class="fld">2 · paste the token</label>
-          <input type="password" data-tok placeholder="github_pat_… or ghp_…" autocomplete="off">
-          <button class="btn primary wide" data-go style="margin-top:10px">connect ✓</button>
-          <p class="muted" style="margin-top:8px">the token needs only the <b>gist</b> permission. it's stored on this device.</p>
+          <p class="muted" style="margin-bottom:10px">connect your GitHub account once per device to sync your whole planner automatically through a <b>private</b> gist.</p>
+          <button class="btn primary wide" id="github-login-btn">Sign in with GitHub</button>
+          <p class="muted" style="margin-top:8px">secure login via GitHub. no passwords saved here.</p>
         </div>`);
-      card.querySelector('[data-tok-guide]').addEventListener('click', () =>
-        open('https://github.com/settings/tokens/new?scopes=gist&description=JSP-OS%20Sync', '_blank'));
-      card.querySelector('[data-go]').addEventListener('click', async function () {
-        const tok = card.querySelector('[data-tok]').value.trim();
-        if (!tok) { toast('paste the token first'); return; }
-        this.disabled = true; this.textContent = 'connecting…';
-        try {
-          const user = await connect(tok);
-          toast(`connected as @${user} ✓`);
-          await push();
-          ctx.refresh(params);
-        } catch (e2) {
-          toast('✦ ' + e2.message);
-          this.disabled = false; this.textContent = 'connect ✓';
-        }
+      card.querySelector('#github-login-btn').addEventListener('click', () => {
+        redirectToGitHub();
       });
       body.appendChild(card);
     }
