@@ -11,21 +11,23 @@ export function cloudReady() { return !!currentUser; }
 export function getCurrentUser() { return currentUser; }
 
 /**
- * Send magic link OTP to email
+ * Sign up with password
  */
-export async function sendMagicLink(email) {
-  const { error } = await supabase.auth.signInWithOtp({ email });
+export async function signUpWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
+  currentUser = data.user;
+  return data.user?.email;
 }
 
 /**
- * Verify OTP
+ * Sign in with password
  */
-export async function verifyOtp(email, token) {
-  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+export async function signInWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   currentUser = data.user;
-  return data.user.email;
+  return data.user?.email;
 }
 
 /**
