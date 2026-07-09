@@ -1,5 +1,5 @@
 /* JSP·OS service worker — offline-first, network-refresh */
-const VERSION = 'jsp-os-v5';
+const VERSION = 'jsp-os-v16';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/main.css',
   'js/main.js', 'js/core.js', 'js/wm.js', 'js/ai.js', 'js/cloud.js', 'js/sfx.js',
