@@ -8,7 +8,7 @@ const API = 'https://api.github.com';
 
 // ⚠️ Configuration
 const CLIENT_ID = 'Ov23livqxSI0BY75sgZe';
-const BACKEND_URL = 'https://github-auth.7yshv8snnw.workers.dev';
+const BACKEND_URL = 'https://github-auth.7yshv8snnw.workers.dev/api/auth';
 
 const gh = () => S.settings.gh || null;
 const headers = t => ({
