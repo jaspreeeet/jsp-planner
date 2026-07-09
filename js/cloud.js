@@ -83,9 +83,20 @@ export async function push() {
   pushing = true;
   try {
     await saveNow();
+
+    // 1. Make a copy of your app data
+    const safeState = JSON.parse(JSON.stringify(S));
+
+    // 2. Erase the token from the copy so GitHub bots don't see it!
+    if (safeState.settings && safeState.settings.gh) {
+      delete safeState.settings.gh.token;
+    }
+
+    // 3. Send the scrubbed data to the cloud
     const body = JSON.stringify({
-      files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: S._ts || Date.now(), state: JSON.parse(JSON.stringify(S)) }) } },
+      files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: S._ts || Date.now(), state: safeState }) } },
     });
+
     const r = await fetch(`${API}/gists/${gh().gistId}`, { method: 'PATCH', headers: headers(gh().token), body });
     if (!r.ok) throw new Error('Push failed.');
     gh().lastPush = Date.now();
