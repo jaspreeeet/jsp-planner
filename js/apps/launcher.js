@@ -13,9 +13,11 @@ function mediaTabFor(url) {
 const DEFAULTS = [
   { name: 'Apple Music', emoji: '🎵', url: 'music://' },
   { name: 'YouTube', emoji: '▶️', url: 'https://youtube.com' },
+  { name: 'GoodNotes', emoji: '📓', url: 'goodnotes://' },
   { name: 'Notes', emoji: '📝', url: 'mobilenotes://' },
   { name: 'Reminders', emoji: '☑️', url: 'x-apple-reminderkit://' },
   { name: 'Calendar', emoji: '📅', url: 'calshow://' },
+  { name: 'Files', emoji: '🗄', url: 'shareddocuments://' },
   { name: 'Mail', emoji: '✉️', url: 'message://' },
   { name: 'Spotify', emoji: '🟢', url: 'spotify://' },
   { name: 'Google Drive', emoji: '📂', url: 'https://drive.google.com' },
@@ -32,6 +34,11 @@ export default {
     if (!S.links.length) {
       S.links = DEFAULTS.map(d => ({ id: uid(), ...d }));
       save();
+    } else {
+      // additions arrive for existing users too
+      for (const d of DEFAULTS.filter(d => ['GoodNotes', 'Files'].includes(d.name))) {
+        if (!S.links.some(l => l.name === d.name)) { S.links.push({ id: uid(), ...d }); save(); }
+      }
     }
 
     const add = el(`<button class="btn primary wide" style="margin:14px 0">+ add portal</button>`);

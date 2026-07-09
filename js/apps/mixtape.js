@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
 let uiRefresh = null;
 function updateUI() { if (uiRefresh) uiRefresh(); }
 
+/* for other apps (Today) to show/control the tape */
+export function mixtapeInfo() { return { playing, name: chan().name }; }
+export function mixtapeToggle() { playing ? pause() : play(); }
+
 export default {
   id: 'mixtape', name: 'Mixtape', icon: '📼', w: 480, h: 660,
   onClose() { uiRefresh = null; },

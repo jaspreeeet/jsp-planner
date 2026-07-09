@@ -8,6 +8,21 @@ const isMobile = () => matchMedia('(max-width: 640px)').matches;
 
 export function registerApp(app) { APPS.set(app.id, app); }
 
+const APP_TINT = {
+  today: '#ffb347', planner: '#4a8fd9', meds: '#e88bb5', routines: '#4caf7d', journal: '#ff6b35',
+  trackers: '#9b7ede', collections: '#ffb347', photos: '#4a8fd9', unstuck: '#e05252', selfcare: '#e88bb5',
+  mixtape: '#ff6b35', media: '#e05252', games: '#9b7ede', shortcuts: '#ffb347', launcher: '#4caf7d',
+  stats: '#ffb347', sync: '#4a8fd9', events: '#e05252', goals: '#4a8fd9', money: '#4caf7d',
+  people: '#ffb347', weather: '#8fc3f0', doodle: '#e88bb5', calc: '#9b7ede', clock: '#ff6b35',
+  calendar: '#e05252', habits: '#ff6b35',
+};
+
+function saveGeom(id, win) {
+  S.settings.win = S.settings.win || {};
+  S.settings.win[id] = { x: win.offsetLeft, y: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight };
+  save();
+}
+
 export function openApp(id, params) {
   const app = APPS.get(id);
   if (!app) return;
@@ -19,26 +34,33 @@ export function openApp(id, params) {
     <section class="window" data-app="${id}" role="dialog" aria-label="${esc(app.name)}">
       <div class="win-titlebar">
         <button class="win-close" title="close">×</button>
-        <span class="win-title">${app.icon} ${esc(app.name)}</span>
+        <span class="win-title"><img src="assets/icons/${id}.svg" alt="" style="width:15px;height:15px;image-rendering:pixelated;vertical-align:-2px"> ${esc(app.name)}</span>
         <span class="wt-spacer"></span>
       </div>
       <div class="win-body${app.nopad ? ' nopad' : ''}"></div>
+      <div class="win-resize" title="drag to resize"></div>
     </section>`);
+  if (APP_TINT[id]) {
+    win.querySelector('.win-titlebar').style.backgroundColor = `color-mix(in srgb, ${APP_TINT[id]} 26%, var(--paper-2))`;
+  }
 
-  // size & cascade position (desktop only)
+  // size & position: saved geometry, else cascade (desktop only)
   if (!isMobile()) {
     const layer = document.getElementById('window-layer');
-    const w = Math.min(app.w || 560, layer.clientWidth - 30);
-    const h = Math.min(app.h || 620, layer.clientHeight - 30);
+    const saved = (S.settings.win || {})[id];
+    const w = Math.min(saved?.w || app.w || 560, layer.clientWidth - 30);
+    const h = Math.min(saved?.h || app.h || 620, layer.clientHeight - 20);
     const n = openWins.size;
     win.style.width = w + 'px'; win.style.height = h + 'px';
-    win.style.left = Math.min(60 + n * 34, layer.clientWidth - w - 12) + 'px';
-    win.style.top = Math.min(24 + n * 26, layer.clientHeight - h - 12) + 'px';
+    const x = saved ? Math.min(Math.max(saved.x, -40), layer.clientWidth - 80) : Math.min(60 + n * 34, layer.clientWidth - w - 12);
+    const y = saved ? Math.min(Math.max(saved.y, 0), layer.clientHeight - 60) : Math.min(24 + n * 26, layer.clientHeight - h - 12);
+    win.style.left = x + 'px'; win.style.top = y + 'px';
   }
   win.style.zIndex = ++zTop;
   win.addEventListener('pointerdown', () => { win.style.zIndex = ++zTop; });
   win.querySelector('.win-close').addEventListener('click', () => closeApp(id));
-  enableDrag(win);
+  enableDrag(win, id);
+  enableResize(win, id);
 
   document.getElementById('window-layer').appendChild(win);
   const body = win.querySelector('.win-body');
@@ -67,7 +89,7 @@ export function rerender(id, params) {
 }
 export function isOpen(id) { return openWins.has(id); }
 
-function enableDrag(win) {
+function enableDrag(win, id) {
   const bar = win.querySelector('.win-titlebar');
   let sx, sy, ox, oy, dragging = false;
   bar.addEventListener('pointerdown', e => {
@@ -81,7 +103,43 @@ function enableDrag(win) {
     win.style.left = Math.max(-40, ox + e.clientX - sx) + 'px';
     win.style.top = Math.max(0, oy + e.clientY - sy) + 'px';
   });
-  bar.addEventListener('pointerup', () => dragging = false);
+  bar.addEventListener('pointerup', () => { if (dragging) { dragging = false; saveGeom(id, win); } });
+  // double-click titlebar: maximize / restore
+  bar.addEventListener('dblclick', e => {
+    if (isMobile() || e.target.closest('.win-close')) return;
+    const layer = document.getElementById('window-layer');
+    if (win.dataset.max) {
+      const [x, y, w, h] = win.dataset.max.split(',').map(Number);
+      win.style.left = x + 'px'; win.style.top = y + 'px';
+      win.style.width = w + 'px'; win.style.height = h + 'px';
+      delete win.dataset.max;
+    } else {
+      win.dataset.max = [win.offsetLeft, win.offsetTop, win.offsetWidth, win.offsetHeight].join(',');
+      win.style.left = '8px'; win.style.top = '8px';
+      win.style.width = (layer.clientWidth - 16) + 'px';
+      win.style.height = (layer.clientHeight - 16) + 'px';
+    }
+    saveGeom(id, win);
+  });
+}
+
+function enableResize(win, id) {
+  const grip = win.querySelector('.win-resize');
+  if (!grip) return;
+  let sx, sy, ow, oh, resizing = false;
+  grip.addEventListener('pointerdown', e => {
+    if (isMobile()) return;
+    e.preventDefault(); e.stopPropagation();
+    resizing = true; sx = e.clientX; sy = e.clientY;
+    ow = win.offsetWidth; oh = win.offsetHeight;
+    grip.setPointerCapture(e.pointerId);
+  });
+  grip.addEventListener('pointermove', e => {
+    if (!resizing) return;
+    win.style.width = Math.max(300, ow + e.clientX - sx) + 'px';
+    win.style.height = Math.max(220, oh + e.clientY - sy) + 'px';
+  });
+  grip.addEventListener('pointerup', () => { if (resizing) { resizing = false; saveGeom(id, win); } });
 }
 
 /* ---------- desktop icons ---------- */
@@ -92,7 +150,7 @@ export function renderDesktop() {
     if (app.hidden) continue;
     const btn = el(`
       <button class="desk-icon" data-app="${app.id}">
-        <img class="di-img" src="assets/icons/${app.id}.svg" alt="" width="52" height="52">
+        <img class="di-img" src="assets/icons/${app.id}.svg" alt="" width="56" height="56">
         <span class="di-lbl">${esc(app.name)}</span>
       </button>`);
     btn.addEventListener('click', () => openApp(app.id));

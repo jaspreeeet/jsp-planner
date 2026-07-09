@@ -26,11 +26,24 @@ import people from './apps/people.js';
 import weather from './apps/weather.js';
 import doodle from './apps/doodle.js';
 import calc from './apps/calc.js';
+import clock from './apps/clock.js';
+import calendar from './apps/calendar.js';
+import habits from './apps/habits.js';
 
-const ALL = [today, planner, meds, routines, journal, events, goals, trackers, unstuck, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, money, calc, shortcuts, launcher, stats, sync];
+const ALL = [today, planner, calendar, habits, meds, routines, journal, events, goals, trackers, unstuck, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, clock, money, calc, shortcuts, launcher, stats, sync];
 
 /* seed friendly examples — only into EMPTY sections, all clearly marked, all deletable */
 function seedExamples() {
+  // v4 additions run their own pass so existing users get them too
+  if (!S.settings.exampled4) {
+    S.settings.exampled4 = true;
+    if (!(S.habits || []).length) {
+      const done = {};
+      for (let i = 1; i <= 4; i++) { const d = new Date(); d.setDate(d.getDate() - i); done[todayKey(d)] = 1; }
+      S.habits.push({ id: uid(), name: 'Shower (example)', emoji: '🚿', done });
+    }
+    save();
+  }
   if (S.settings.exampled) return;
   S.settings.exampled = true;
   const dk = todayKey();
@@ -99,7 +112,22 @@ async function boot() {
 
   // restore flow: shortcut copies backup to clipboard then opens app with #paste
   if (location.hash === '#paste') { history.replaceState(null, '', location.pathname); openApp('sync', { paste: true }); }
+  else if (location.hash.startsWith('#app=')) {
+    const target = location.hash.slice(5);
+    history.replaceState(null, '', location.pathname);
+    openApp(APPS.has(target) ? target : 'today');
+  }
   else openApp('today');
+
+  // shortcuts can deep-link while the app is already open (no reload happens)
+  addEventListener('hashchange', () => {
+    if (location.hash === '#paste') { history.replaceState(null, '', location.pathname); openApp('sync', { paste: true }); }
+    else if (location.hash.startsWith('#app=')) {
+      const target = location.hash.slice(5);
+      history.replaceState(null, '', location.pathname);
+      if (APPS.has(target)) openApp(target);
+    }
+  });
 
   // service worker
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {

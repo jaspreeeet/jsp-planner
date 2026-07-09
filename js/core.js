@@ -75,6 +75,8 @@ export const DEFAULT_STATE = {
   goals: [],                  // {id,name,emoji,why,milestones[{id,text,done}]}
   money: { entries: [], budget: null },
   people: [],                 // {id,name,emoji,likes,birthday,notes,lastTalked}
+  habits: [],                 // {id,name,emoji,done:{dateKey:1}}
+  calendarEvents: [],         // imported .ics: {id,title,date,time}
   stats: { captures: 0, medsTaken: 0, tasksDone: 0, journalEntries: 0, gamesPlayed: 0, breaths: 0, pomos: 0 },
 };
 
@@ -181,7 +183,19 @@ export const ACHIEVEMENTS = [
   { id: 'pomo-10', e: '🍅', n: 'Tomato Farmer', test: s => s.stats.pomos >= 10 },
   { id: 'game-5', e: '🕹️', n: 'Arcade Kid', test: s => s.stats.gamesPlayed >= 5 },
   { id: 'collector', e: '🗂️', n: 'Curator', test: s => (s.collections || []).reduce((a, c) => a + c.items.length, 0) >= 20 },
+  { id: 'chain-7', e: '⛓️', n: '7-Day Chain', test: s => (s.habits || []).some(h => habitStreak(h) >= 7) },
+  { id: 'chain-30', e: '🔗', n: '30-Day Chain', test: s => (s.habits || []).some(h => habitStreak(h) >= 30) },
 ];
+export function habitStreak(h) {
+  let n = 0;
+  for (let i = 0; i < 999; i++) {
+    const k = daysAgoKey(i);
+    if (h.done && h.done[k]) n++;
+    else if (i === 0) continue;   // today unchecked doesn't break it yet
+    else break;
+  }
+  return n;
+}
 export function checkAchievements() {
   for (const a of ACHIEVEMENTS) {
     if (!S.achievements.includes(a.id) && a.test(S)) {

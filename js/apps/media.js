@@ -6,6 +6,7 @@ const KINDS = {
   am: { label: '🍎 Music', hint: 'share any song/album/playlist in Apple Music → copy link → paste here', open: 'music://', openLbl: 'open Apple Music ↗' },
   yt: { label: '▶️ YouTube', hint: 'paste any video, live stream, short or playlist link', open: 'https://youtube.com', openLbl: 'open YouTube ↗' },
   sp: { label: '🟢 Spotify', hint: 'share any song/album/playlist in Spotify → copy link → paste here', open: 'spotify://', openLbl: 'open Spotify ↗' },
+  sc: { label: '☁️ SoundCloud', hint: 'paste any track or set link from SoundCloud', open: 'https://soundcloud.com', openLbl: 'open SoundCloud ↗' },
 };
 
 const STARTERS = [
@@ -37,6 +38,9 @@ export function toEmbed(raw) {
   if (host === 'music.apple.com') {
     const isSong = u.searchParams.get('i') || u.pathname.includes('/song/');
     return { kind: 'am', embed: 'https://embed.music.apple.com' + u.pathname + u.search, height: isSong ? 175 : 450 };
+  }
+  if (host === 'soundcloud.com' || host === 'on.soundcloud.com') {
+    return { kind: 'sc', embed: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(raw.trim()) + '&color=%23ff6b35&show_teaser=false', height: 166 };
   }
   if (host === 'open.spotify.com') {
     const parts = u.pathname.split('/').filter(Boolean);           // [type, id] or [embed, type, id]
@@ -73,9 +77,11 @@ export default {
     }
     const tab = (params && params.tab) || S.media.tab || 'yt';
     S.media.tab = tab;
-    const nowId = params && params.play;
     const items = S.media.items.filter(i => i.kind === tab);
+    // resume: no explicit pick → reopen what you played last on this tab
+    const nowId = (params && params.play) || (S.media.last && S.media.last.tab === tab ? S.media.last.id : null);
     const now = items.find(i => i.id === nowId) || null;
+    if (now && params && params.play) { S.media.last = { tab, id: now.id }; save(); }
 
     body.appendChild(el(`
       <div><div class="serif-h">media</div>

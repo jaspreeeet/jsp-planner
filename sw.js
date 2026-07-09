@@ -1,5 +1,5 @@
 /* JSP·OS service worker — offline-first, network-refresh */
-const VERSION = 'jsp-os-v3';
+const VERSION = 'jsp-os-v4';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/main.css',
   'js/main.js', 'js/core.js', 'js/wm.js',
@@ -9,6 +9,8 @@ const CORE = [
   'js/apps/launcher.js', 'js/apps/mixtape.js', 'js/apps/media.js', 'js/apps/stats.js', 'js/apps/sync.js',
   'js/apps/events.js', 'js/apps/goals.js', 'js/apps/money.js', 'js/apps/people.js',
   'js/apps/weather.js', 'js/apps/doodle.js', 'js/apps/calc.js',
+  'js/apps/clock.js', 'js/apps/calendar.js', 'js/apps/habits.js',
+  'assets/decor-sun.svg', 'assets/decor-cloud1.svg', 'assets/decor-cloud2.svg', 'assets/decor-waves.svg',
   'fonts/silkscreen-400.woff2', 'fonts/silkscreen-700.woff2', 'fonts/vt323.woff2',
   'fonts/instrument-serif.woff2', 'fonts/instrument-serif-italic.woff2',
   'assets/icons/favicon.svg', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/icon-180.png',
