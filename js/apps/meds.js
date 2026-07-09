@@ -1,6 +1,7 @@
 /* ═══════════ MEDS & SUPPLEMENTS — with the WHY front and centre ═══════════ */
 import { S, save, todayKey, fmtTime, esc, el, addXP, uid, calcStreak, emit, toast } from '../core.js';
-import { modal, confirmModal } from '../wm.js';
+import { modal, confirmModal, openApp } from '../wm.js';
+import { aiReady, medFact } from '../ai.js';
 
 const COLORS = ['#ff6b35', '#4a8fd9', '#4caf7d', '#9b7ede', '#e88bb5', '#ffb347', '#e05252'];
 
@@ -93,6 +94,7 @@ export default {
             ${esc(m.name)} <span class="muted" style="font-weight:400">${esc(m.dose || '')}</span>
             <span class="ct-spacer"></span>
             ${streak > 1 ? `<span class="streak-flame">🔥${streak}</span>` : ''}
+            <button class="btn small ghost" data-act="fact" title="fun fact from claude">✨</button>
             <button class="btn small ghost" data-act="edit">✎</button>
             <button class="btn small ghost" data-act="del">🗑</button>
           </div>
@@ -111,6 +113,17 @@ export default {
         });
         timesZone.appendChild(c);
       }
+      card.querySelector('[data-act=fact]').addEventListener('click', () => {
+        if (!aiReady()) { toast('add your API key in Sync → claude brain first 🔮'); openApp('sync'); return; }
+        modal({
+          title: `✨ about ${esc(m.name)}`,
+          bodyHTML: `<div class="affirm" data-fact style="font-size:17px">consulting the oracle…</div>`,
+          onMount(sheet) {
+            medFact(m).then(t => { const n = sheet.querySelector('[data-fact]'); if (n) n.textContent = '“' + t + '”'; })
+              .catch(e2 => { const n = sheet.querySelector('[data-fact]'); if (n) n.textContent = '✦ ' + e2.message; });
+          },
+        });
+      });
       card.querySelector('[data-act=edit]').addEventListener('click', () =>
         medForm(m, () => { save(); emit('data'); ctx.refresh(); }));
       card.querySelector('[data-act=del]').addEventListener('click', () =>

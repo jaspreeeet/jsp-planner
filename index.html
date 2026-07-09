@@ -15,11 +15,20 @@
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
+  <!-- ══════════ BOOT SPLASH ══════════ -->
+  <div id="boot">
+    <img src="assets/icons/icon-192.png" alt="" class="boot-logo">
+    <div class="boot-name">JSP·OS</div>
+    <div class="boot-sub" id="boot-line">warming up the tape deck…</div>
+    <div class="boot-bar"><i id="boot-fill"></i></div>
+    <div class="boot-ver">v5 · est. 2026 · made with 💛</div>
+  </div>
+
   <!-- ══════════ MENU BAR ══════════ -->
   <header id="menubar">
     <button class="mb-logo" id="mb-home" title="Desktop">▚ JSP·OS</button>
     <nav id="mb-menus"></nav>
-    <div class="mb-spacer"></div>
+    <div class="mb-spacer"><div id="mb-ticker"><span id="mb-ticker-text"></span></div></div>
     <div id="mb-nowplaying" class="hidden">
       <button id="mb-play" title="Play / pause">▶</button>
       <span id="mb-track">mixtape</span>

@@ -19,7 +19,11 @@ import mixtape from './apps/mixtape.js';
 import media from './apps/media.js';
 import stats from './apps/stats.js';
 import sync from './apps/sync.js';
+import oracle from './apps/oracle.js';
 import events from './apps/events.js';
+import { pullIfNewer, startEngine, cloudReady } from './cloud.js';
+import { wireSfx, pop, boot as bootChime } from './sfx.js';
+import { mixtapeInfo } from './apps/mixtape.js';
 import goals from './apps/goals.js';
 import money from './apps/money.js';
 import people from './apps/people.js';
@@ -30,7 +34,7 @@ import clock from './apps/clock.js';
 import calendar from './apps/calendar.js';
 import habits from './apps/habits.js';
 
-const ALL = [today, planner, calendar, habits, meds, routines, journal, events, goals, trackers, unstuck, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, clock, money, calc, shortcuts, launcher, stats, sync];
+const ALL = [today, planner, calendar, habits, meds, routines, journal, events, goals, trackers, unstuck, oracle, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, clock, money, calc, shortcuts, launcher, stats, sync];
 
 /* seed friendly examples — only into EMPTY sections, all clearly marked, all deletable */
 function seedExamples() {
@@ -93,9 +97,30 @@ function seedExamples() {
   save();
 }
 
+const BOOT_LINES = [
+  'warming up the tape deck…', 'ironing the pixels…', 'untangling the chains…',
+  'feeding the oracle…', 'bribing the sun to rise…', 'counting your streaks…',
+];
+function bootUI(pct, line) {
+  const f = document.getElementById('boot-fill');
+  if (f) f.style.width = pct + '%';
+  if (line) document.getElementById('boot-line').textContent = line;
+}
+
 async function boot() {
+  const bootStart = Date.now();
+  bootUI(12, BOOT_LINES[Math.floor(Math.random() * BOOT_LINES.length)]);
   await dbOpen();
+  bootUI(30);
   await loadState();
+  bootUI(45);
+  // cloud: adopt a newer version from another device (bounded so boot never hangs)
+  let pulled = false;
+  if (cloudReady()) {
+    bootUI(55, 'checking the cloud…');
+    pulled = await Promise.race([pullIfNewer(), new Promise(r => setTimeout(() => r(false), 5000))]);
+  }
+  bootUI(70);
   seedExamples();
   ALL.forEach(registerApp);
 
@@ -139,6 +164,50 @@ async function boot() {
   // never lose a thought: flush pending saves when the app is backgrounded/closed
   addEventListener('pagehide', () => saveNow());
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+
+  // vibes: sounds, ticker, crt, cloud engine
+  wireSfx();
+  on('xp', pop);
+  document.body.classList.toggle('crt', !!S.settings.crt);
+  startTicker();
+  startEngine();
+  if (pulled) toast('☁ pulled the newest version from your other device ✓');
+
+  // dismiss splash (min 900ms so it doesn't blink)
+  const wait = Math.max(0, 900 - (Date.now() - bootStart));
+  setTimeout(() => {
+    bootUI(100, 'welcome back.');
+    const b = document.getElementById('boot');
+    setTimeout(() => { b.classList.add('bye'); setTimeout(() => b.remove(), 500); }, 250);
+  }, wait);
+  document.addEventListener('pointerdown', () => bootChime(), { once: true });
+}
+
+/* ---------- menubar ticker ---------- */
+const TICKER_LINES = [
+  'romanticise the boring parts', 'main-character maintenance in progress',
+  'tiny steps count double on hard days', 'the chain misses you',
+  'hydrate or diedrate', 'you are the CEO of your own cozy empire',
+];
+function startTicker() {
+  const node = document.getElementById('mb-ticker-text');
+  if (!node) return;
+  const build = () => {
+    const tk = todayKey();
+    const bits = [];
+    const mi = mixtapeInfo();
+    if (mi.playing) bits.push('📼 now playing: ' + mi.name);
+    const left = S.tasks.filter(t => t.dateKey === tk && !t.done).length;
+    if (left) bits.push(`▤ ${left} task${left > 1 ? 's' : ''} on today's plate`);
+    const chain = Math.max(0, ...(S.habits || []).map(h => Object.keys(h.done || {}).length));
+    if (chain) bits.push(`⛓ ${chain} links forged all-time`);
+    const nextEv = S.events.filter(e2 => e2.date >= tk).sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (nextEv) bits.push(`⏳ ${nextEv.name} approaching`);
+    bits.push('✦ ' + TICKER_LINES[Math.floor(Math.random() * TICKER_LINES.length)]);
+    return bits.join('  ·  ');
+  };
+  node.textContent = build();
+  setInterval(() => { node.textContent = build(); }, 30000);
 }
 
 /* ---------- menubar ---------- */

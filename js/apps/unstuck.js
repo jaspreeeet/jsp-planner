@@ -1,6 +1,8 @@
 /* ═══════════ UNSTUCK — for analysis paralysis & frozen moments ═══════════ */
 import { S, save, todayKey, esc, el, addXP, uid, toast, emit } from '../core.js';
 import { modal, openApp } from '../wm.js';
+import { aiReady } from '../ai.js';
+import { splitIntoTasks } from './oracle.js';
 
 const WHEEL_COLORS = ['#ff6b35', '#4a8fd9', '#4caf7d', '#9b7ede', '#e88bb5', '#ffb347'];
 
@@ -50,6 +52,15 @@ function renderStuck(ctx, body) {
           <input type="text" id="sh-tiny" placeholder="e.g. open notes to chapter 4" style="margin:8px 0">`,
         actions: [
           { label: 'cancel', cls: 'ghost' },
+          {
+            label: '🔮 let claude split it', cls: '',
+            onClick(sheet) {
+              const task = sheet.querySelector('#sh-task').value.trim();
+              if (!task) { toast('type the big task first'); return false; }
+              if (!aiReady()) { toast('add your API key in Sync → claude brain 🔮'); openApp('sync'); return; }
+              splitIntoTasks(task);
+            },
+          },
           {
             label: 'make it today\'s task', cls: 'primary',
             onClick(sheet) {

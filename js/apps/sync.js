@@ -1,6 +1,8 @@
 /* ═══════════ SYNC & SETTINGS — iCloud via Shortcuts · backups · reminders ═══════════ */
 import { S, save, saveNow, kvSet, esc, el, toast, todayKey, photoAll, photoPut } from '../core.js';
 import { modal } from '../wm.js';
+import { cloudReady, connect, disconnect, push, pullIfNewer } from '../cloud.js';
+import { aiReady, ask } from '../ai.js';
 
 function stateJSON() { return JSON.stringify({ app: 'jsp-os', ts: Date.now(), state: JSON.parse(JSON.stringify(S)) }); }
 
@@ -125,10 +127,115 @@ export default {
       });
       themeZone.appendChild(c);
     }
+    const vibes = el(`
+      <div class="chip-row" style="margin-top:10px">
+        <button class="chip ${S.settings.sfx !== false ? 'on' : ''}" data-v="sfx">🔊 sounds</button>
+        <button class="chip ${S.settings.crt ? 'on' : ''}" data-v="crt">📺 crt mode</button>
+      </div>`);
+    vibes.querySelector('[data-v=sfx]').addEventListener('click', function () {
+      S.settings.sfx = S.settings.sfx === false;
+      this.classList.toggle('on', S.settings.sfx !== false);
+      save();
+    });
+    vibes.querySelector('[data-v=crt]').addEventListener('click', function () {
+      S.settings.crt = !S.settings.crt;
+      document.body.classList.toggle('crt', S.settings.crt);
+      this.classList.toggle('on', S.settings.crt);
+      save();
+    });
+    pers.appendChild(vibes);
     body.appendChild(pers);
 
+    /* --- account sync (GitHub gist) --- */
+    body.appendChild(el(`<div class="section-h">🌩 account sync — automatic</div>`));
+    if (cloudReady()) {
+      const g = S.settings.gh;
+      const card = el(`
+        <div class="card" style="border-color:var(--green)">
+          <div class="card-title">✓ synced as @${esc(g.user)}
+            <span class="ct-spacer"></span>
+            <button class="btn small ghost" data-out>disconnect</button>
+          </div>
+          <p class="muted">changes push automatically ~25s after you make them, and every launch pulls the newest version. it just works.</p>
+          <div class="pixel-sub" style="margin:8px 0">last push: ${g.lastPush ? new Date(g.lastPush).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'not yet'} · last pull: ${g.lastPull ? new Date(g.lastPull).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'not yet'}</div>
+          <button class="btn wide" data-now>⟳ sync now</button>
+        </div>`);
+      card.querySelector('[data-now]').addEventListener('click', async () => {
+        toast('syncing…');
+        try {
+          const pulled = await pullIfNewer();
+          if (pulled) { toast('newer version pulled ✓ reloading'); setTimeout(() => location.reload(), 800); return; }
+          await push();
+          toast('pushed ✓ all devices will pick it up');
+          ctx.refresh(params);
+        } catch (e2) { toast('✦ ' + e2.message); }
+      });
+      card.querySelector('[data-out]').addEventListener('click', () => { disconnect(); ctx.refresh(params); });
+      body.appendChild(card);
+    } else {
+      const card = el(`
+        <div class="card">
+          <p class="muted" style="margin-bottom:10px">the closest thing to a login: connect your GitHub account once per device and your whole planner syncs itself through a <b>private</b> gist — no shortcuts, no buttons, works anywhere.</p>
+          <button class="btn wide" data-tok-guide>1 · get my token (opens github, pre-configured)</button>
+          <label class="fld">2 · paste the token</label>
+          <input type="password" data-tok placeholder="github_pat_… or ghp_…" autocomplete="off">
+          <button class="btn primary wide" data-go style="margin-top:10px">connect ✓</button>
+          <p class="muted" style="margin-top:8px">the token needs only the <b>gist</b> permission. it's stored on this device.</p>
+        </div>`);
+      card.querySelector('[data-tok-guide]').addEventListener('click', () =>
+        open('https://github.com/settings/tokens/new?scopes=gist&description=JSP-OS%20Sync', '_blank'));
+      card.querySelector('[data-go]').addEventListener('click', async function () {
+        const tok = card.querySelector('[data-tok]').value.trim();
+        if (!tok) { toast('paste the token first'); return; }
+        this.disabled = true; this.textContent = 'connecting…';
+        try {
+          const user = await connect(tok);
+          toast(`connected as @${user} ✓`);
+          await push();
+          ctx.refresh(params);
+        } catch (e2) {
+          toast('✦ ' + e2.message);
+          this.disabled = false; this.textContent = 'connect ✓';
+        }
+      });
+      body.appendChild(card);
+    }
+
+    /* --- claude brain --- */
+    body.appendChild(el(`<div class="section-h">🔮 claude brain</div>`));
+    const brain = el(`
+      <div class="card" ${aiReady() ? 'style="border-color:var(--purple)"' : ''}>
+        ${aiReady()
+          ? `<div class="card-title">✓ the oracle is awake<span class="ct-spacer"></span><button class="btn small ghost" data-forget>forget key</button></div>
+             <p class="muted">powers the 🔮 Oracle app, ✨ med fun-facts and task-splitting. runs on Haiku — a question costs a fraction of a cent.</p>
+             <button class="btn wide" data-test style="margin-top:8px">🪄 test it</button>`
+          : `<p class="muted" style="margin-bottom:10px">give the OS a brain: fun facts about your meds, AI task-splitting, and a resident oracle that knows your day. bring your own Anthropic API key (console.anthropic.com → API keys).</p>
+             <label class="fld">anthropic api key</label>
+             <input type="password" data-key placeholder="sk-ant-…" autocomplete="off">
+             <button class="btn primary wide" data-save style="margin-top:10px">wake the oracle 🔮</button>
+             <p class="muted" style="margin-top:8px">key lives on your device (and inside your own backups). uses claude-haiku — the cheap one.</p>`}
+      </div>`);
+    if (aiReady()) {
+      brain.querySelector('[data-forget]').addEventListener('click', () => { delete S.settings.aiKey; save(); ctx.refresh(params); });
+      brain.querySelector('[data-test]').addEventListener('click', async function () {
+        this.textContent = '…';
+        try { toast('🔮 ' + await ask('Say hi to your human in one short playful sentence.')); }
+        catch (e2) { toast('✦ ' + e2.message); }
+        this.textContent = '🪄 test it';
+      });
+    } else {
+      brain.querySelector('[data-save]').addEventListener('click', async () => {
+        const k = brain.querySelector('[data-key]').value.trim();
+        if (!k) { toast('paste the key first'); return; }
+        S.settings.aiKey = k; save();
+        try { toast('🔮 ' + await ask('You just woke up inside this planner. Greet your human in one short excited sentence.')); ctx.refresh(params); }
+        catch (e2) { delete S.settings.aiKey; save(); toast('✦ ' + e2.message); }
+      });
+    }
+    body.appendChild(brain);
+
     /* --- iCloud sync via Shortcuts --- */
-    body.appendChild(el(`<div class="section-h">☁️ iCloud sync (via Shortcuts)</div>`));
+    body.appendChild(el(`<div class="section-h">☁️ iCloud sync (via Shortcuts) — alternative</div>`));
     const cloud = el(`
       <div class="card">
         <p class="muted" style="margin-bottom:10px">two taps to move your whole planner between iPhone, iPad & Mac through your iCloud Drive:</p>

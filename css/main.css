@@ -106,6 +106,45 @@ input,textarea,[contenteditable] { user-select:text; -webkit-user-select:text; }
 ::-webkit-scrollbar-thumb { background:var(--ink); border:3px solid var(--paper-2); border-radius:6px; }
 ::-webkit-scrollbar-track { background:var(--paper-2); }
 
+/* ═══════════ BOOT SPLASH ═══════════ */
+#boot {
+  position:fixed; inset:0; z-index:9999; background:var(--paper);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  transition:opacity .45s;
+}
+#boot.bye { opacity:0; pointer-events:none; }
+.boot-logo { width:88px; height:88px; image-rendering:pixelated; border-radius:20px;
+  box-shadow:var(--win-shadow); animation:bootBob 1.6s ease-in-out infinite; }
+@keyframes bootBob { 50% { transform:translateY(-6px); } }
+.boot-name { font-family:var(--pixel); font-weight:700; font-size:22px; letter-spacing:2px; margin-top:8px; }
+.boot-sub { font-family:var(--serif); font-style:italic; font-size:16px; color:var(--ink-soft); min-height:22px; }
+.boot-bar { width:min(300px,70vw); height:14px; border:var(--border); border-radius:8px; background:var(--paper-2); overflow:hidden; margin-top:6px; }
+.boot-bar i { display:block; height:100%; width:0%; background:var(--sunset);
+  background-size:20px 20px;
+  background-image:linear-gradient(45deg,rgba(255,255,255,.3) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.3) 50%,rgba(255,255,255,.3) 75%,transparent 75%);
+  transition:width .3s; }
+.boot-ver { font-family:var(--pixel); font-size:8px; color:var(--ink-faint); letter-spacing:1.5px; margin-top:12px; text-transform:uppercase; }
+
+/* ═══════════ MENUBAR TICKER ═══════════ */
+#mb-ticker { overflow:hidden; margin:0 14px; -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); }
+#mb-ticker-text {
+  display:inline-block; white-space:nowrap; font-family:var(--pixel); font-size:9px;
+  letter-spacing:1px; color:var(--ink-soft); text-transform:uppercase;
+  padding-left:100%; animation:tick 28s linear infinite;
+}
+@keyframes tick { to { transform:translateX(-100%); } }
+@media (max-width:760px) { #mb-ticker { display:none; } }
+
+/* ═══════════ CRT MODE ═══════════ */
+body.crt::after {
+  content:''; position:fixed; inset:0; z-index:9990; pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.11), rgba(0,0,0,.11) 1px, transparent 1px, transparent 3px),
+    radial-gradient(circle at 50% 50%, transparent 55%, rgba(0,0,0,.22) 100%);
+}
+body.crt { animation:crtFlicker 4s infinite; }
+@keyframes crtFlicker { 0%,100% { filter:brightness(1); } 97% { filter:brightness(1); } 98% { filter:brightness(.96); } }
+
 /* ═══════════ MENU BAR ═══════════ */
 #menubar {
   position:fixed; top:0; left:0; right:0; z-index:900;
