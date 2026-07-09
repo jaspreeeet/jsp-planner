@@ -1,81 +1,55 @@
-/* ═══════════ CLOUD SYNC — Secure GitHub OAuth Serverless Sync ═══════════
-   No PATs stored. Uses OAuth App + Serverless Proxy. */
+/* ═══════════ CLOUD SYNC — Supabase Database & Auth ═══════════ */
 import { S, save, saveNow } from './core.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
-const GIST_DESC = 'JSP·OS planner sync — private';
-const FILE = 'jsp-os-backup.json';
-const API = 'https://api.github.com';
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ⚠️ Configuration
-const CLIENT_ID = 'Ov23livqxSI0BY75sgZe';
-const BACKEND_URL = 'https://github-auth.7yshv8snnw.workers.dev/api/auth';
+let currentUser = null;
 
-const gh = () => (S && S.settings) ? S.settings.gh : null;
-const headers = t => ({
-  'Authorization': 'Bearer ' + t,
-  'Accept': 'application/vnd.github+json',
-  'Content-Type': 'application/json',
-});
-
-export function cloudReady() { return !!(gh() && gh().token && gh().gistId); }
+export function cloudReady() { return !!currentUser; }
+export function getCurrentUser() { return currentUser; }
 
 /**
- * 1. Call this to send the user to GitHub to sign in
+ * Send magic link OTP to email
  */
-export function redirectToGitHub() {
-  const root = window.location.origin + window.location.pathname;
-  window.location.href = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=gist&redirect_uri=${encodeURIComponent(root)}`;
+export async function sendMagicLink(email) {
+  const { error } = await supabase.auth.signInWithOtp({ email });
+  if (error) throw error;
 }
 
 /**
- * 2. Check URL for '?code=...' on app load, pass it here to complete login
+ * Verify OTP
  */
-export async function handleAuthCallback(code) {
-  // Exchange code for token via proxy backend
-  const res = await fetch(BACKEND_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code })
-  });
-
-  if (!res.ok) throw new Error('Auth proxy failed');
-  const data = await res.json();
-  if (data.error) throw new Error(data.error_description || data.error);
-
-  // Initialize connection with the new token
-  return await connect(data.access_token);
+export async function verifyOtp(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) throw error;
+  currentUser = data.user;
+  return data.user.email;
 }
 
-export async function connect(token) {
-  const u = await fetch(API + '/user', { headers: headers(token) });
-  if (!u.ok) throw new Error('GitHub authorization expired or invalid.');
-  const user = (await u.json()).login;
-
-  let gistId = null;
-  const list = await fetch(API + '/gists?per_page=100', { headers: headers(token) });
-  if (list.ok) {
-    for (const g of await list.json()) {
-      if (g.description === GIST_DESC && g.files[FILE]) { gistId = g.id; break; }
-    }
-  }
-  if (!gistId) {
-    const create = await fetch(API + '/gists', {
-      method: 'POST', headers: headers(token),
-      body: JSON.stringify({
-        description: GIST_DESC, public: false,
-        files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: 0, state: null }) } },
-      }),
-    });
-    if (!create.ok) throw new Error('Could not initialize Gist storage.');
-    gistId = (await create.json()).id;
-  }
-  S.settings = S.settings || {};
-  S.settings.gh = { token, gistId, user, lastPush: 0, lastPull: 0 };
+/**
+ * Sign out
+ */
+export async function disconnect() {
+  await supabase.auth.signOut();
+  currentUser = null;
   save();
-  return user;
 }
 
-export function disconnect() { delete S.settings.gh; save(); }
+/**
+ * Initialize auth state on boot
+ */
+export async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  currentUser = session?.user || null;
+  
+  supabase.auth.onAuthStateChange((event, session) => {
+    currentUser = session?.user || null;
+  });
+  
+  return currentUser;
+}
 
 let pushing = false;
 export async function push() {
@@ -84,22 +58,22 @@ export async function push() {
   try {
     await saveNow();
 
-    // 1. Make a copy of your app data
     const safeState = JSON.parse(JSON.stringify(S));
 
-    // 2. Erase the token from the copy so GitHub bots don't see it!
-    if (safeState.settings && safeState.settings.gh) {
-      delete safeState.settings.gh.token;
-    }
+    const { error } = await supabase
+      .from('sync_state')
+      .upsert({ 
+        user_id: currentUser.id, 
+        data: safeState,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
 
-    // 3. Send the scrubbed data to the cloud
-    const body = JSON.stringify({
-      files: { [FILE]: { content: JSON.stringify({ app: 'jsp-os', ts: S._ts || Date.now(), state: safeState }) } },
-    });
-
-    const r = await fetch(`${API}/gists/${gh().gistId}`, { method: 'PATCH', headers: headers(gh().token), body });
-    if (!r.ok) throw new Error('Push failed.');
-    gh().lastPush = Date.now();
+    if (error) throw error;
+    
+    // Update local last push
+    S.settings = S.settings || {};
+    S.settings.cloud = S.settings.cloud || {};
+    S.settings.cloud.lastPush = Date.now();
     lastPushedTs = S._ts || 0;
     save();
     return true;
@@ -108,42 +82,44 @@ export async function push() {
 
 export async function pull() {
   if (!cloudReady()) return null;
-  const r = await fetch(`${API}/gists/${gh().gistId}?t=${Date.now()}`, { headers: headers(gh().token) });
-  if (!r.ok) return null;
-  const g = await r.json();
-  let content = g.files[FILE]?.content;
-  if (g.files[FILE]?.truncated) {
-    content = await (await fetch(g.files[FILE].raw_url)).text();
-  }
-  try {
-    const data = JSON.parse(content);
-    if (data && data.app === 'jsp-os' && data.state) return data;
-  } catch {}
-  return null;
+  const { data, error } = await supabase
+    .from('sync_state')
+    .select('data')
+    .eq('user_id', currentUser.id)
+    .single();
+    
+  if (error) return null;
+  return data?.data || null;
 }
 
 export async function pullIfNewer() {
   try {
-    const remote = await pull();
-    if (!remote || !remote.state) return false;
+    const remoteState = await pull();
+    if (!remoteState) return false;
+    
     const localTs = S._ts || 0;
-    if ((remote.state._ts || remote.ts || 0) > localTs) {
-      const keepKey = S.settings.gh;
+    const remoteTs = remoteState._ts || 0;
+    
+    if (remoteTs > localTs) {
+      const keepCloud = S.settings?.cloud;
       Object.keys(S).forEach(k => delete S[k]);
-      Object.assign(S, remote.state);
+      Object.assign(S, remoteState);
       S.settings = S.settings || {};
-      S.settings.gh = Object.assign({}, S.settings.gh, keepKey, { lastPull: Date.now() });
+      S.settings.cloud = Object.assign({}, keepCloud, { lastPull: Date.now() });
       await saveNow();
       return true;
     }
-    gh().lastPull = Date.now(); save();
-  } catch {}
+    
+    S.settings = S.settings || {};
+    S.settings.cloud = S.settings.cloud || {};
+    S.settings.cloud.lastPull = Date.now(); 
+    save();
+  } catch (e) { console.error('Pull failed', e); }
   return false;
 }
 
 let lastPushedTs = 0;
 export function startEngine() {
-  if (!cloudReady()) return;
   lastPushedTs = S._ts || 0;
   setInterval(() => {
     if (cloudReady() && (S._ts || 0) > lastPushedTs) push().catch(() => {});

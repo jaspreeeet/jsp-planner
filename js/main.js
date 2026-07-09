@@ -21,7 +21,7 @@ import stats from './apps/stats.js';
 import sync from './apps/sync.js';
 import oracle from './apps/oracle.js';
 import events from './apps/events.js';
-import { pullIfNewer, startEngine, cloudReady } from './cloud.js';
+import { pullIfNewer, startEngine, cloudReady, initAuth } from './cloud.js';
 import { wireSfx, pop, boot as bootChime } from './sfx.js';
 import { mixtapeInfo } from './apps/mixtape.js';
 import goals from './apps/goals.js';
@@ -36,28 +36,7 @@ import habits from './apps/habits.js';
 
 const ALL = [today, planner, calendar, habits, meds, routines, journal, events, goals, trackers, unstuck, oracle, selfcare, collections, photos, people, mixtape, media, games, doodle, weather, clock, money, calc, shortcuts, launcher, stats, sync];
 
-import { handleAuthCallback } from './cloud.js';
-import { S } from './core.js';
 
-const urlParams = new URLSearchParams(window.location.search);
-const authCode = urlParams.get('code');
-
-if (authCode) {
-  // 1. Clean the URL so the weird code disappears
-  window.history.replaceState({}, document.title, window.location.pathname);
-
-  // 2. Wait until the 'S' object is fully loaded from the database
-  const waitForApp = setInterval(() => {
-    if (S !== null && S !== undefined) {
-      clearInterval(waitForApp); // Stop waiting
-
-      // 3. Now it is safe to log in!
-      handleAuthCallback(authCode)
-        .then(user => console.log(`Logged in as ${user}`))
-        .catch(err => alert(`Sync failed: ${err.message}`));
-    }
-  }, 100); // Checks every 100 milliseconds
-}
 
 /* seed friendly examples — only into EMPTY sections, all clearly marked, all deletable */
 function seedExamples() {
@@ -136,6 +115,8 @@ async function boot() {
   await dbOpen();
   bootUI(30);
   await loadState();
+  bootUI(40, 'waking the cloud...');
+  await initAuth();
   bootUI(45);
   // cloud: adopt a newer version from another device (bounded so boot never hangs)
   let pulled = false;

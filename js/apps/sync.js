@@ -1,8 +1,7 @@
 /* ═══════════ SYNC & SETTINGS — iCloud via Shortcuts · backups · reminders ═══════════ */
 import { S, save, saveNow, kvSet, esc, el, toast, todayKey, photoAll, photoPut } from '../core.js';
 import { modal } from '../wm.js';
-// ✨ Notice the new redirectToGitHub import here!
-import { cloudReady, connect, disconnect, push, pullIfNewer, redirectToGitHub } from '../cloud.js';
+import { cloudReady, getCurrentUser, sendMagicLink, verifyOtp, disconnect, push, pullIfNewer } from '../cloud.js';
 import { aiReady, ask } from '../ai.js';
 
 function stateJSON() { return JSON.stringify({ app: 'jsp-os', ts: Date.now(), state: JSON.parse(JSON.stringify(S)) }); }
@@ -150,10 +149,11 @@ export default {
     /* --- account sync (GitHub gist) --- */
     body.appendChild(el(`<div class="section-h">🌩 account sync — automatic</div>`));
     if (cloudReady()) {
-      const g = S.settings.gh;
+      const g = S.settings?.cloud || {};
+      const userEmail = getCurrentUser().email;
       const card = el(`
         <div class="card" style="border-color:var(--green)">
-          <div class="card-title">✓ synced as @${esc(g.user)}
+          <div class="card-title">✓ synced as ${esc(userEmail)}
             <span class="ct-spacer"></span>
             <button class="btn small ghost" data-out>disconnect</button>
           </div>
@@ -171,20 +171,52 @@ export default {
           ctx.refresh(params);
         } catch (e2) { toast('✦ ' + e2.message); }
       });
-      card.querySelector('[data-out]').addEventListener('click', () => { disconnect(); ctx.refresh(params); });
+      card.querySelector('[data-out]').addEventListener('click', async () => { await disconnect(); ctx.refresh(params); });
       body.appendChild(card);
     } else {
-      // ✨ HERE IS THE NEW UI!
-      // It completely replaces the 3 old password inputs with 1 button.
       const card = el(`
-        <div class="card">
-          <p class="muted" style="margin-bottom:10px">connect your GitHub account once per device to sync your whole planner automatically through a <b>private</b> gist.</p>
-          <button class="btn primary wide" id="github-login-btn">Sign in with GitHub</button>
-          <p class="muted" style="margin-top:8px">secure login via GitHub. no passwords saved here.</p>
+        <div class="card" id="login-card">
+          <p class="muted" style="margin-bottom:10px">log in once per device to sync your whole planner automatically.</p>
+          <input type="email" id="login-email" placeholder="you@example.com" class="fld" style="margin-bottom:10px; width:100%; box-sizing: border-box;">
+          <button class="btn primary wide" id="magic-link-btn">Send Login Code</button>
+          <div id="otp-section" class="hidden" style="margin-top:15px">
+            <p class="muted" style="margin-bottom:8px">Check your email for the code:</p>
+            <input type="text" id="login-otp" placeholder="123456" class="fld" style="margin-bottom:10px; width:100%; box-sizing: border-box;">
+            <button class="btn primary wide" id="verify-btn">Verify & Sign In</button>
+          </div>
+          <p class="muted" style="margin-top:8px">secure passwordless login via Supabase.</p>
         </div>`);
-      card.querySelector('#github-login-btn').addEventListener('click', () => {
-        redirectToGitHub();
+      
+      card.querySelector('#magic-link-btn').addEventListener('click', async () => {
+        const email = card.querySelector('#login-email').value.trim();
+        if (!email) { toast('Please enter your email'); return; }
+        try {
+          card.querySelector('#magic-link-btn').disabled = true;
+          await sendMagicLink(email);
+          toast('Login code sent! Check your inbox.');
+          card.querySelector('#otp-section').classList.remove('hidden');
+          card.querySelector('#magic-link-btn').classList.add('hidden');
+        } catch (e) {
+          toast('Error: ' + e.message);
+          card.querySelector('#magic-link-btn').disabled = false;
+        }
       });
+
+      card.querySelector('#verify-btn').addEventListener('click', async () => {
+        const email = card.querySelector('#login-email').value.trim();
+        const token = card.querySelector('#login-otp').value.trim();
+        if (!token) { toast('Please enter the code'); return; }
+        try {
+          card.querySelector('#verify-btn').disabled = true;
+          await verifyOtp(email, token);
+          toast('Logged in successfully ✓');
+          ctx.refresh(params);
+        } catch (e) {
+          toast('Error: ' + e.message);
+          card.querySelector('#verify-btn').disabled = false;
+        }
+      });
+
       body.appendChild(card);
     }
 
